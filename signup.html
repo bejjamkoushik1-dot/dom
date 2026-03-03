@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign up — R.V.R &amp; J.C College of Engineering Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-brand">RVRJC Library</a>
+    <div id="nav-links" class="nav-links"></div>
+  </nav>
+  <main class="form-page">
+    <h1>Sign up</h1>
+    <p class="text-muted mb-2">Create your account and set up security questions for password recovery.</p>
+    <form id="signup-form">
+      <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="new-password" minlength="6">
+        <small class="text-muted">Minimum 6 characters</small>
+      </div>
+      
+      <div id="security-fields" style="display: block;">
+      <div class="form-group">
+        <label for="security-question">Security Question</label>
+        <select id="security-question" name="security-question" required>
+          <option value="">Choose a security question</option>
+          <option value="pet">What was your first pet's name?</option>
+          <option value="school">What elementary school did you attend?</option>
+          <option value="city">In what city were you born?</option>
+          <option value="friend">What is your childhood best friend's name?</option>
+          <option value="phone">What was your first phone number?</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="security-answer">Security Answer</label>
+        <input type="text" id="security-answer" name="security-answer" required placeholder="Your answer (case-insensitive)">
+        <small class="text-muted">Remember this answer - you'll need it to reset your password</small>
+      </div>
+      </div>
+      
+      <p id="form-error" class="form-error hidden"></p>
+      <button type="submit" class="btn btn-primary">Create account</button>
+    </form>
+    <p class="form-footer">Already have an account? <a href="/login">Log in</a></p>
+  </main>
+  <script src="/js/auth.js"></script>
+  <script>
+    const form = document.getElementById('signup-form');
+    const errEl = document.getElementById('form-error');
+    
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errEl.classList.add('hidden');
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const securityQuestion = document.getElementById('security-question').value;
+      const securityAnswer = document.getElementById('security-answer').value.trim();
+      
+      if (!securityQuestion || !securityAnswer) {
+        errEl.textContent = 'Please select a security question and provide an answer.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name, 
+          email, 
+          password, 
+          isAdmin: false,
+          securityQuestion, 
+          securityAnswer 
+        }),
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        errEl.textContent = data.error || 'Sign up failed';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      window.location.href = '/login';
+    });
+  </script>
+</body>
+</html>

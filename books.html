@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Books — R.V.R &amp; J.C College of Engineering Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-brand">RVRJC Library</a>
+    <div id="nav-links" class="nav-links"></div>
+  </nav>
+  <main class="container">
+    <h1 class="page-title">College Library Collection</h1>
+    <p class="text-muted mb-2" id="reserve-hint">Sign in with your college account to reserve books.</p>
+    <div id="department-filter" class="department-chips mb-2"></div>
+    <div class="search-bar mt-1 mb-2">
+      <input type="search" id="search-input" placeholder="Search by title, author, code, or department…" class="search-input" autocomplete="off">
+    </div>
+    <p id="result-count" class="result-count hidden"></p>
+    <div id="books-list" class="card-grid book-card-grid"></div>
+    <p id="loading" class="text-muted">Loading books…</p>
+    <p id="no-books" class="text-muted hidden">No books found.</p>
+  </main>
+  <footer class="site-footer">
+    R.V.R &amp; J.C College of Engineering Library &middot; <a href="/">Home</a> <a href="/books">Browse</a> <a href="/reserve">Reserve</a>
+  </footer>
+  <div id="reserve-modal" class="modal hidden">
+    <div class="modal-content reserve-modal-box">
+      <div class="modal-header">
+        <h3>Reserve this book</h3>
+        <button type="button" class="modal-close" id="reserve-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="reserve-modal-date">Return by date</label>
+        <input type="date" id="reserve-modal-date" required>
+      </div>
+      <p id="reserve-modal-error" class="reserve-modal-error hidden"></p>
+      <div class="reserve-modal-actions">
+        <button type="button" class="btn btn-secondary" id="reserve-modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="reserve-modal-submit">Reserve</button>
+      </div>
+    </div>
+  </div>
+  <script src="/js/reserve-modal.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/covers.js"></script>
+  <script>
+    const listEl = document.getElementById('books-list');
+    const loadingEl = document.getElementById('loading');
+    const noBooksEl = document.getElementById('no-books');
+
+    function getSearchQ() {
+      return (document.getElementById('search-input')?.value || '').trim();
+    }
+
+    function getDepartment() {
+      const params = new URLSearchParams(location.search);
+      return params.get('department') || '';
+    }
+
+    async function loadBooks() {
+      const q = getSearchQ();
+      const dept = getDepartment();
+      let url = '/api/books';
+      const parts = [];
+      if (q) parts.push('q=' + encodeURIComponent(q));
+      if (dept) parts.push('department=' + encodeURIComponent(dept));
+      if (parts.length) url += '?' + parts.join('&');
+      const res = await fetch(url, { credentials: 'include' });
+      const books = await res.json();
+      loadingEl.classList.add('hidden');
+      const countEl = document.getElementById('result-count');
+      if (countEl) {
+        if (books.length) {
+          countEl.textContent = books.length + ' result' + (books.length !== 1 ? 's' : '');
+          countEl.classList.remove('hidden');
+        } else countEl.classList.add('hidden');
+      }
+      if (!books.length) {
+        noBooksEl.classList.remove('hidden');
+        return;
+      }
+      const user = await getCurrentUser();
+      const hintEl = document.getElementById('reserve-hint');
+      if (hintEl) hintEl.style.display = user ? 'none' : 'block';
+      const deptFilter = document.getElementById('department-filter');
+      if (deptFilter) {
+        const deptRes = await fetch('/api/departments', { credentials: 'include' });
+        if (deptRes.ok) {
+          const departments = await deptRes.json();
+          const current = getDepartment();
+          deptFilter.innerHTML = '<a href="/books" class="chip' + (!current ? ' active' : '') + '">All</a>' +
+            (departments || []).map(d => '<a href="/books?department=' + encodeURIComponent(d) + '" class="chip' + (current === d ? ' active' : '') + '">' + escapeHtml(d) + '</a>').join('');
+        }
+      }
+      let reservationsByBookId = {};
+      if (user) {
+        try {
+          const resMy = await fetch('/api/reservations', { credentials: 'include' });
+          if (resMy.ok) {
+            const rows = await resMy.json();
+            rows.forEach(row => { reservationsByBookId[row.book_id] = row; });
+          }
+        } catch (e) {}
+      }
+      const placeholder = typeof PLACEHOLDER_COVER !== 'undefined' ? PLACEHOLDER_COVER : '';
+      listEl.innerHTML = books.map(b => {
+        const available = b.available != null ? b.available : (b.quantity || 0);
+        const canReserve = user && available > 0;
+        const coverUrl = typeof getCoverUrl === 'function' ? (getCoverUrl(b) || placeholder) : placeholder;
+        const category = b.category || '';
+        const userReservation = reservationsByBookId[b.id];
+        return `
+          <div class="card book-card" data-book-id="${b.id}">
+            <a href="/book/${b.id}" class="book-cover-wrap">
+              <img src="${coverUrl || ''}" alt="" class="book-cover" onerror="this.src=typeof PLACEHOLDER_COVER!=='undefined'?PLACEHOLDER_COVER:''">
+            </a>
+            <div class="book-card-body">
+              <h3><a href="/book/${b.id}" class="book-card-title">${escapeHtml(b.title)}</a></h3>
+              <p class="meta">${escapeHtml(b.author)}</p>
+              ${category ? `<p class="meta">${escapeHtml(category)}</p>` : ''}
+              ${userReservation ? `<p class="meta">Reserved on ${new Date(userReservation.reserved_at).toLocaleDateString()}${userReservation.due_date ? ' • Due ' + new Date(userReservation.due_date).toLocaleDateString() : ''}</p>` : ''}
+              ${b.description ? `<p class="desc">${escapeHtml(b.description)}</p>` : ''}
+              <span class="badge ${available > 0 ? 'badge-available' : 'badge-unavailable'}">
+                ${available > 0 ? available + ' available' : 'Unavailable'}
+              </span>
+              <div class="card-actions">
+                ${canReserve && !userReservation ? `<button type="button" class="btn btn-primary btn-reserve" data-id="${b.id}">Reserve</button>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('.btn-reserve').forEach(btn => {
+        btn.addEventListener('click', () => reserveBook(btn.dataset.id));
+      });
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s == null ? '' : s;
+      return div.innerHTML;
+    }
+
+    function getReservationDays() {
+      return null;
+    }
+
+    async function reserveBook(bookId) {
+      if (typeof showReserveModal !== 'function') return;
+      showReserveModal(bookId, {
+        onSuccess: function() { loadBooks(); }
+      });
+    }
+
+    document.getElementById('search-input')?.addEventListener('input', () => {
+      clearTimeout(window._searchTimer);
+      window._searchTimer = setTimeout(loadBooks, 200);
+    });
+    document.getElementById('search-input')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') loadBooks();
+    });
+    window.addEventListener('popstate', loadBooks);
+    loadBooks();
+  </script>
+</body>
+</html>

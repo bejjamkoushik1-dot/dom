@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal — RVRJC Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .admin-header {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, #0066b3, #004d8c);
+      color: white;
+      padding: 2rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .admin-header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .admin-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .admin-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .admin-card h3 {
+      color: var(--accent);
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
+    }
+    .admin-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+    .admin-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .admin-btn {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      text-align: center;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .admin-btn.primary {
+      background: var(--accent);
+      color: white;
+    }
+    .admin-btn.primary:hover {
+      background: var(--accent-hover);
+      color: white;
+    }
+    .admin-btn.secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .admin-btn.secondary:hover {
+      background: var(--surface-hover);
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .stat-item {
+      text-align: center;
+      padding: 1rem;
+      background: var(--surface);
+      border-radius: 6px;
+    }
+    .stat-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--accent);
+    }
+    .stat-label {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-brand">RVRJC Library</a>
+    <div id="nav-links" class="nav-links"></div>
+  </nav>
+  
+  <main>
+    <div class="admin-dashboard">
+      <div class="admin-header">
+        <h1>👑 Admin Portal</h1>
+        <p>Welcome to the RVRJC Library Administration Dashboard</p>
+      </div>
+
+      <div class="admin-card">
+        <h3>📊 System Overview</h3>
+        <p>Quick statistics and system health</p>
+        <div class="stats-grid" id="admin-stats">
+          <div class="stat-item">
+            <div class="stat-number" id="stat-users">-</div>
+            <div class="stat-label">Users</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" id="stat-books">-</div>
+            <div class="stat-label">Books</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" id="stat-reservations">-</div>
+            <div class="stat-label">Active Reservations</div>
+          </div>
+        </div>
+        <div class="quick-actions">
+          <a href="/admin" class="admin-btn primary">📚 Manage Books</a>
+          <a href="/admin#users" class="admin-btn secondary">👥 Manage Users</a>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h3>📚 Book Management</h3>
+        <p>Add, edit, and manage library books</p>
+        <div class="admin-actions">
+          <a href="/admin" class="admin-btn primary">📖 View All Books</a>
+          <a href="/admin#add" class="admin-btn secondary">➕ Add New Book</a>
+          <a href="/admin#reservations" class="admin-btn secondary">📋 Manage Reservations</a>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h3>👥 User Management</h3>
+        <p>View and manage user accounts</p>
+        <div class="admin-actions">
+          <a href="/admin#users" class="admin-btn primary">👤 View All Users</a>
+          <a href="/admin-signup" class="admin-btn secondary">➕ Create Admin</a>
+          <a href="/signup" class="admin-btn secondary">👤 Create User</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    // Load admin statistics
+    async function loadAdminStats() {
+      try {
+        const response = await fetch('/api/admin/stats', {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const stats = await response.json();
+          document.getElementById('stat-users').textContent = stats.users || 0;
+          document.getElementById('stat-books').textContent = stats.books || 0;
+          document.getElementById('stat-reservations').textContent = stats.activeReservations || 0;
+        }
+      } catch (error) {
+        console.error('Failed to load admin stats:', error);
+      }
+    }
+
+    // Check if user is admin
+    async function checkAdminAccess() {
+      try {
+        const response = await fetch('/api/me', { credentials: 'include' });
+        const data = await response.json();
+        
+        if (!data.user || !data.user.isAdmin) {
+          alert('Access denied. Admin privileges required.');
+          window.location.href = '/login';
+          return;
+        }
+        
+        // Load stats if admin
+        loadAdminStats();
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        window.location.href = '/login';
+      }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', checkAdminAccess);
+  </script>
+</body>
+</html>

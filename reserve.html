@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reserve — R.V.R &amp; J.C College of Engineering Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-brand">RVRJC Library</a>
+    <div id="nav-links" class="nav-links"></div>
+  </nav>
+  <main class="container">
+    <h1 class="page-title">Reserve a book</h1>
+    <p id="login-prompt" class="text-muted hidden">Please <a href="/login?redirect=/reserve">log in</a> to reserve books.</p>
+    <div id="books-list" class="card-grid book-card-grid"></div>
+    <p id="loading" class="text-muted">Loading…</p>
+    <p id="no-books" class="text-muted hidden">No books available to reserve.</p>
+  </main>
+  <div id="reserve-modal" class="modal hidden">
+    <div class="modal-content reserve-modal-box">
+      <div class="modal-header">
+        <h3>Reserve this book</h3>
+        <button type="button" class="modal-close" id="reserve-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="reserve-modal-date">Return by date</label>
+        <input type="date" id="reserve-modal-date" required>
+      </div>
+      <p id="reserve-modal-error" class="reserve-modal-error hidden"></p>
+      <div class="reserve-modal-actions">
+        <button type="button" class="btn btn-secondary" id="reserve-modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="reserve-modal-submit">Reserve</button>
+      </div>
+    </div>
+  </div>
+  <script src="/js/reserve-modal.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/covers.js"></script>
+  <script>
+    const listEl = document.getElementById('books-list');
+    const loadingEl = document.getElementById('loading');
+    const noBooksEl = document.getElementById('no-books');
+    const loginPrompt = document.getElementById('login-prompt');
+
+    async function init() {
+      const user = await getCurrentUser();
+      if (!user) {
+        loadingEl.classList.add('hidden');
+        loginPrompt.classList.remove('hidden');
+        return;
+      }
+      const res = await fetch('/api/books', { credentials: 'include' });
+      const books = await res.json();
+      const available = books.filter(b => (b.available != null ? b.available : b.quantity) > 0);
+      loadingEl.classList.add('hidden');
+      if (!available.length) {
+        noBooksEl.classList.remove('hidden');
+        return;
+      }
+      const placeholder = typeof PLACEHOLDER_COVER !== 'undefined' ? PLACEHOLDER_COVER : '';
+      listEl.innerHTML = available.map(b => {
+        const coverUrl = typeof getCoverUrl === 'function' ? (getCoverUrl(b) || placeholder) : placeholder;
+        return `
+        <div class="card book-card">
+          <a href="/book/${b.id}" class="book-cover-wrap">
+            <img src="${coverUrl || ''}" alt="" class="book-cover" onerror="this.src=typeof PLACEHOLDER_COVER!=='undefined'?PLACEHOLDER_COVER:''">
+          </a>
+          <div class="book-card-body">
+            <h3><a href="/book/${b.id}" class="book-card-title">${escapeHtml(b.title)}</a></h3>
+            <p class="meta">${escapeHtml(b.author)}</p>
+            <span class="badge badge-available">${b.available ?? b.quantity} available</span>
+            <div class="card-actions">
+              <button type="button" class="btn btn-primary btn-reserve" data-id="${b.id}">Reserve</button>
+            </div>
+          </div>
+        </div>
+      `;
+      }).join('');
+
+      listEl.querySelectorAll('.btn-reserve').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.id;
+          if (typeof showReserveModal !== 'function') return;
+          showReserveModal(id, {
+            onSuccess: function() { window.location.href = '/my-reservations'; }
+          });
+        });
+      });
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s == null ? '' : s;
+      return div.innerHTML;
+    }
+
+    init();
+  </script>
+</body>
+</html>

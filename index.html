@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>R.V.R &amp; J.C College of Engineering Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-brand">R.V.R &amp; J.C College of Engineering Library</a>
+    <div id="nav-links" class="nav-links"></div>
+  </nav>
+  <main class="container">
+    <section class="home-hero" id="home-hero">
+      <h1>R.V.R &amp; J.C College of Engineering Library</h1>
+      <p class="home-tagline">Sign in or create an account to browse books by department, reserve copies, and manage your timeline.</p>
+      <div class="home-cta">
+        <a href="/login" class="btn btn-primary btn-hero">Log in</a>
+        <a href="/signup" class="btn btn-hero-secondary">Sign up</a>
+      </div>
+      <p class="home-guest text-muted">Sign up to access the library and reserve books.</p>
+    </section>
+    <section class="home-featured hidden" id="home-featured">
+      <h2>Browse by Department</h2>
+      <div id="department-chips" class="department-chips"></div>
+      <h2 class="mt-2">Books in the library</h2>
+      <div id="featured-list" class="card-grid book-card-grid"></div>
+      <p id="featured-loading" class="text-muted">Loading…</p>
+    </section>
+  </main>
+  <footer class="site-footer">
+    R.V.R &amp; J.C College of Engineering Library &middot; <a href="/">Home</a> <a href="/books">Browse</a> <a href="/login">Log in</a> <a href="/signup">Sign up</a>
+  </footer>
+  <script src="/js/auth.js"></script>
+  <script src="/js/covers.js"></script>
+  <script>
+    (function() {
+      var hero = document.getElementById('home-hero');
+      var featured = document.getElementById('home-featured');
+      var featuredList = document.getElementById('featured-list');
+      var loading = document.getElementById('featured-loading');
+      var deptChips = document.getElementById('department-chips');
+
+      function escapeHtml(s) {
+        if (s == null) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      function renderLoggedIn(user) {
+        hero.classList.add('hidden');
+        featured.classList.remove('hidden');
+        hero.querySelector('h1').textContent = 'Welcome back, ' + user.name;
+        fetch('/api/departments', { credentials: 'include' })
+          .then(function(r) { return r.json(); })
+          .then(function(departments) {
+            if (departments && departments.length) {
+              deptChips.innerHTML = departments.map(function(d) {
+                return '<a href="/books?department=' + encodeURIComponent(d) + '" class="chip">' + escapeHtml(d) + '</a>';
+              }).join('');
+            }
+          });
+        fetch('/api/books', { credentials: 'include' })
+          .then(function(r) { return r.json(); })
+          .then(function(books) {
+            loading.classList.add('hidden');
+            if (!books.length) return;
+            var take = 12;
+            featuredList.innerHTML = books.slice(0, take).map(function(b) {
+              var coverUrl = getCoverUrl(b) || PLACEHOLDER_COVER;
+              return '<a href="/book/' + b.id + '" class="card book-card">' +
+                '<div class="book-cover-wrap"><img src="' + coverUrl + '" alt="" class="book-cover" onerror="this.src=\'' + PLACEHOLDER_COVER + '\'"></div>' +
+                '<div class="book-card-body">' +
+                  '<h3>' + escapeHtml(b.title) + '</h3>' +
+                  '<p class="meta">' + escapeHtml(b.author) + '</p>' +
+                  (b.category ? '<p class="meta">' + escapeHtml(b.category) + '</p>' : '') +
+                '</div></a>';
+            }).join('');
+          })
+          .catch(function() { loading.classList.add('hidden'); });
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        getCurrentUser().then(function(user) {
+          if (user) {
+            renderLoggedIn(user);
+          }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

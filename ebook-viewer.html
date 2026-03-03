@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Book — Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-brand">Library</a>
+    <div id="nav-links" class="nav-links"></div>
+  </nav>
+  <div class="ebook-viewer">
+    <div class="toolbar">
+      <a href="/ebooks" class="btn btn-secondary">← Back to E-Books</a>
+      <span id="book-title" class="text-muted"></span>
+    </div>
+    <div id="viewer-area">
+      <p id="msg" class="container text-muted">Loading…</p>
+      <iframe id="pdf-frame" class="hidden" title="PDF viewer"></iframe>
+    </div>
+  </div>
+  <script src="/js/auth.js"></script>
+  <script>
+    const id = window.location.pathname.split('/ebook/')[1];
+    const msgEl = document.getElementById('msg');
+    const frameEl = document.getElementById('pdf-frame');
+    const titleEl = document.getElementById('book-title');
+
+    async function init() {
+      if (!id) {
+        msgEl.textContent = 'Invalid book.';
+        return;
+      }
+      const res = await fetch(`/api/books/${id}`, { credentials: 'include' });
+      if (!res.ok) {
+        msgEl.textContent = 'Book not found.';
+        return;
+      }
+      const book = await res.json();
+      titleEl.textContent = book.title + ' — ' + book.author;
+
+      if (!book.ebook_path) {
+        msgEl.textContent = 'No e-book file available for this title.';
+        return;
+      }
+      // ebook_path is like /ebooks/sample-gatsby.pdf — serve from static /ebooks
+      const pdfUrl = book.ebook_path.startsWith('/') ? book.ebook_path : '/ebooks/' + book.ebook_path;
+      frameEl.src = pdfUrl;
+      frameEl.classList.remove('hidden');
+      msgEl.classList.add('hidden');
+    }
+
+    init();
+  </script>
+</body>
+</html>

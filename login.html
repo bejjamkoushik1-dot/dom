@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log in — R.V.R &amp; J.C College of Engineering Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-brand">RVRJC Library</a>
+    <div id="nav-links" class="nav-links"></div>
+  </nav>
+  <main class="form-page">
+    <h1>Log in</h1>
+    <form id="login-form">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password">
+      </div>
+      <p id="form-error" class="form-error hidden"></p>
+      <button type="submit" class="btn btn-primary">Log in</button>
+    </form>
+    <p class="form-footer">
+      <a href="/simple-forgot-password">🔗 Forgot Password (Secure Reset)</a>
+    </p>
+    <p class="form-footer">
+      <a href="/admin-signup">👑 Admin Registration</a> | 
+      <a href="/signup">👤 User Registration</a>
+    </p>
+    <p class="form-footer">Don't have an account? <a href="/signup">Sign up</a></p>
+  </main>
+  <script src="/js/auth.js"></script>
+  <script>
+    const form = document.getElementById('login-form');
+    const errEl = document.getElementById('form-error');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errEl.classList.add('hidden');
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        errEl.textContent = data.error || 'Login failed';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      
+      // Redirect based on user type
+      if (data.user && data.user.isAdmin) {
+        window.location.href = '/admin-home';
+      } else {
+        const params = new URLSearchParams(location.search);
+        const redirect = params.get('redirect') || '/';
+        window.location.href = redirect;
+      }
+    });
+  </script>
+</body>
+</html>

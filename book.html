@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book — R.V.R &amp; J.C College of Engineering Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-brand">RVRJC Library</a>
+    <div id="nav-links" class="nav-links"></div>
+  </nav>
+  <main class="container">
+    <p id="loading" class="text-muted">Loading…</p>
+    <p id="not-found" class="text-muted hidden">Book not found.</p>
+    <article id="book-detail" class="book-detail hidden">
+      <div class="book-detail-header">
+        <div class="book-detail-cover-wrap">
+          <img id="book-cover" class="book-detail-cover" alt="" src="">
+        </div>
+        <div class="book-detail-info">
+          <h1 id="book-title" class="book-detail-title"></h1>
+          <p id="book-author" class="book-detail-author"></p>
+          <p id="book-isbn" class="text-muted book-detail-meta"></p>
+          <p id="book-availability" class="book-availability"></p>
+          <p id="user-reservation-info" class="book-user-reservation text-muted"></p>
+          <div class="book-meta-grid">
+            <div class="book-meta-row">
+              <span class="book-meta-label">Author</span>
+              <span class="book-meta-value" id="meta-author"></span>
+            </div>
+            <div class="book-meta-row">
+              <span class="book-meta-label">Category</span>
+              <span class="book-meta-value" id="meta-category"></span>
+            </div>
+            <div class="book-meta-row">
+              <span class="book-meta-label">ISBN</span>
+              <span class="book-meta-value" id="meta-isbn"></span>
+            </div>
+            <div class="book-meta-row">
+              <span class="book-meta-label">Total copies</span>
+              <span class="book-meta-value" id="meta-quantity"></span>
+            </div>
+            <div class="book-meta-row">
+              <span class="book-meta-label">Available</span>
+              <span class="book-meta-value" id="meta-available"></span>
+            </div>
+            <div class="book-meta-row">
+              <span class="book-meta-label">Reserved</span>
+              <span class="book-meta-value" id="meta-reserved"></span>
+            </div>
+            <div class="book-meta-row">
+              <span class="book-meta-label">Added</span>
+              <span class="book-meta-value" id="meta-created"></span>
+            </div>
+          </div>
+          <div class="book-detail-actions">
+            <button type="button" id="btn-reserve" class="btn btn-primary hidden">Reserve this book</button>
+          </div>
+        </div>
+      </div>
+      <div class="book-detail-desc">
+        <h2>About this book</h2>
+        <p id="book-description"></p>
+      </div>
+      <section class="book-ebook-section hidden" id="ebook-section">
+        <div class="book-ebook-viewer">
+          <iframe id="ebook-iframe" title="E-book"></iframe>
+        </div>
+      </section>
+    </article>
+  </main>
+  <div id="reserve-modal" class="modal hidden">
+    <div class="modal-content reserve-modal-box">
+      <div class="modal-header">
+        <h3>Reserve this book</h3>
+        <button type="button" class="modal-close" id="reserve-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="reserve-modal-date">Return by date</label>
+        <input type="date" id="reserve-modal-date" required>
+      </div>
+      <p id="reserve-modal-error" class="reserve-modal-error hidden"></p>
+      <div class="reserve-modal-actions">
+        <button type="button" class="btn btn-secondary" id="reserve-modal-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="reserve-modal-submit">Reserve</button>
+      </div>
+    </div>
+  </div>
+  <script src="/js/reserve-modal.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/covers.js"></script>
+  <script>
+    (function() {
+      var id = window.location.pathname.replace(/^\/book\//, '');
+      var loading = document.getElementById('loading');
+      var notFound = document.getElementById('not-found');
+      var detail = document.getElementById('book-detail');
+
+      function escapeHtml(s) {
+        if (s == null) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      function show() {
+        loading.classList.add('hidden');
+        if (!id) {
+          notFound.classList.remove('hidden');
+          return;
+        }
+        fetch('/api/books/' + id, { credentials: 'include' })
+          .then(function(r) {
+            if (!r.ok) throw new Error('Not found');
+            return r.json();
+          })
+          .then(function(book) {
+            notFound.classList.add('hidden');
+            detail.classList.remove('hidden');
+
+            var coverUrl = getCoverUrl(book) || PLACEHOLDER_COVER;
+            document.getElementById('book-cover').src = coverUrl;
+            document.getElementById('book-cover').onerror = function() { this.src = PLACEHOLDER_COVER; };
+            document.getElementById('book-title').textContent = book.title;
+            document.getElementById('book-author').textContent = book.author;
+            document.getElementById('book-isbn').textContent = book.isbn ? 'ISBN ' + book.isbn : '';
+            document.getElementById('book-description').textContent = book.description || 'No description available.';
+
+            var available = book.available != null ? book.available : (book.quantity || 0);
+            var total = book.quantity || 0;
+            var reserved = total - available;
+            if (reserved < 0) reserved = 0;
+            document.getElementById('book-availability').innerHTML =
+              '<span class="badge ' + (available > 0 ? 'badge-available' : 'badge-unavailable') + '">' +
+              (available > 0 ? available + ' available' : 'Unavailable') + '</span>';
+            document.getElementById('meta-author').textContent = book.author || '—';
+            document.getElementById('meta-category').textContent = book.category || '—';
+            document.getElementById('meta-isbn').textContent = book.isbn || '—';
+            document.getElementById('meta-quantity').textContent = total;
+            document.getElementById('meta-available').textContent = available;
+            document.getElementById('meta-reserved').textContent = reserved;
+            document.getElementById('meta-created').textContent = book.created_at
+              ? new Date(book.created_at).toLocaleDateString()
+              : '—';
+
+            getCurrentUser().then(function(user) {
+              if (!user) return;
+
+              fetch('/api/my-reservation/' + book.id, { credentials: 'include' })
+                .then(function(r) { return r.ok ? r.json() : { reservation: null }; })
+                .then(function(resp) {
+                  var infoEl = document.getElementById('user-reservation-info');
+                  var reservation = resp && resp.reservation;
+                  if (reservation && infoEl) {
+                    var reservedDate = reservation.reserved_at ? new Date(reservation.reserved_at).toLocaleDateString() : '';
+                    var dueDate = reservation.due_date ? new Date(reservation.due_date).toLocaleDateString() : '';
+                    infoEl.innerHTML =
+                      'You reserved this book on <strong>' + reservedDate + '</strong>' +
+                      (dueDate ? ' (due on <strong>' + dueDate + '</strong>)' : '');
+                    var btnExisting = document.getElementById('btn-reserve');
+                    if (btnExisting) {
+                      btnExisting.textContent = 'Already reserved';
+                      btnExisting.disabled = true;
+                    }
+                    return;
+                  }
+
+                  if (available > 0) {
+                    var btn = document.getElementById('btn-reserve');
+                    btn.classList.remove('hidden');
+                    btn.onclick = function() {
+                      if (typeof showReserveModal !== 'function') return;
+                      showReserveModal(book.id, {
+                        onSuccess: function() {
+                          btn.textContent = 'Reserved';
+                          btn.disabled = true;
+                          var infoEl = document.getElementById('user-reservation-info');
+                          if (infoEl) {
+                            var due = null;
+                            infoEl.innerHTML = 'You reserved this book. Return by the date you selected.';
+                          }
+                        }
+                      });
+                    };
+                  }
+                });
+            });
+
+            // E-book viewing disabled: do not attempt to load PDF files.
+          })
+          .catch(function() {
+            loading.classList.add('hidden');
+            notFound.classList.remove('hidden');
+          });
+      }
+
+      function scrollToEbook() {
+        if (window.location.hash === '#ebook') {
+          var el = document.getElementById('ebook-section');
+          if (el && !el.classList.contains('hidden')) el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { show(); scrollToEbook(); });
+      else { show(); setTimeout(scrollToEbook, 300); }
+    })();
+  </script>
+</body>
+</html>

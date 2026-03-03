@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Reservations — R.V.R &amp; J.C College of Engineering Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-brand">RVRJC Library</a>
+    <div id="nav-links" class="nav-links"></div>
+  </nav>
+  <main class="container">
+    <h1 class="page-title">My reservations</h1>
+    <p id="login-prompt" class="text-muted hidden">Please <a href="/login?redirect=/my-reservations">log in</a> to see your reservations.</p>
+    <div class="table-wrap">
+      <table id="reservations-table">
+        <thead>
+          <tr>
+            <th>Book</th>
+            <th>Author</th>
+            <th>Reserved</th>
+            <th>Due</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="reservations-body"></tbody>
+      </table>
+    </div>
+    <p id="empty" class="text-muted hidden">You have no active reservations. <a href="/reserve">Reserve a book</a>.</p>
+    <p id="loading" class="text-muted">Loading…</p>
+  </main>
+  <script src="/js/auth.js"></script>
+  <script>
+    const tbody = document.getElementById('reservations-body');
+    const loadingEl = document.getElementById('loading');
+    const emptyEl = document.getElementById('empty');
+    const loginPrompt = document.getElementById('login-prompt');
+
+    async function load() {
+      const user = await getCurrentUser();
+      if (!user) {
+        loadingEl.classList.add('hidden');
+        loginPrompt.classList.remove('hidden');
+        document.getElementById('reservations-table').closest('.table-wrap').classList.add('hidden');
+        return;
+      }
+      const res = await fetch('/api/reservations', { credentials: 'include' });
+      if (res.status === 401) {
+        loadingEl.classList.add('hidden');
+        loginPrompt.classList.remove('hidden');
+        return;
+      }
+      const rows = await res.json();
+      loadingEl.classList.add('hidden');
+      if (!rows.length) {
+        emptyEl.classList.remove('hidden');
+        document.getElementById('reservations-table').closest('.table-wrap').classList.add('hidden');
+        return;
+      }
+      const now = new Date();
+      const in3Days = new Date(now);
+      in3Days.setDate(in3Days.getDate() + 3);
+      tbody.innerHTML = rows.map(r => {
+        const dueDate = r.due_date ? new Date(r.due_date) : null;
+        const isDueSoon = dueDate && dueDate <= in3Days && dueDate >= now;
+        const isOverdue = dueDate && dueDate < now;
+        let dueDisplay = r.due_date ? dueDate.toLocaleDateString() : '—';
+        if (isOverdue) dueDisplay += ' <span class="due-badge">Overdue</span>';
+        else if (isDueSoon) dueDisplay += ' <span class="due-badge">Due soon</span>';
+        return `
+        <tr class="${isOverdue ? 'overdue' : isDueSoon ? 'due-soon' : ''}">
+          <td>${escapeHtml(r.title)}</td>
+          <td>${escapeHtml(r.author)}</td>
+          <td>${new Date(r.reserved_at).toLocaleDateString()}</td>
+          <td>${dueDisplay}</td>
+          <td>
+            <button type="button" class="btn btn-secondary btn-return" data-id="${r.id}">Mark returned</button>
+          </td>
+        </tr>
+      `;
+      }).join('');
+
+      tbody.querySelectorAll('.btn-return').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          const r = await fetch(`/api/reservations/${id}/return`, { method: 'POST', credentials: 'include' });
+          const data = await r.json();
+          if (!r.ok) { alert(data.error || 'Failed'); return; }
+          load();
+        });
+      });
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s == null ? '' : s;
+      return div.innerHTML;
+    }
+
+    load();
+  </script>
+</body>
+</html>

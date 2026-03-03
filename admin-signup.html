@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Registration — RVRJC Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-header {
+      background: linear-gradient(135deg, #0066b3, #004d8c);
+      color: white;
+      padding: 2rem;
+      text-align: center;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+    .admin-header h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .admin-header p {
+      opacity: 0.9;
+      font-size: 1.1rem;
+    }
+    .admin-form {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .security-note {
+      background: #e7f3ff;
+      border: 1px solid #0066b3;
+      border-radius: 6px;
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-brand">RVRJC Library</a>
+    <div id="nav-links" class="nav-links"></div>
+  </nav>
+  
+  <main class="form-page">
+    <div class="admin-header">
+      <h1>👑 Administrator Registration</h1>
+      <p>Create admin account with elevated privileges</p>
+    </div>
+
+    <div class="admin-form">
+      <div class="security-note">
+        <strong>🔐 Admin Privileges:</strong>
+        <ul>
+          <li>Full system administration access</li>
+          <li>Manage books and reservations</li>
+          <li>User management capabilities</li>
+          <li>No security questions required</li>
+        </ul>
+      </div>
+
+      <form id="admin-signup-form">
+        <div class="form-group">
+          <label for="name">Full Name</label>
+          <input type="text" id="name" name="name" required autocomplete="name" placeholder="Administrator Name">
+        </div>
+        
+        <div class="form-group">
+          <label for="email">Admin Email</label>
+          <input type="email" id="email" name="email" required autocomplete="email" placeholder="admin@library.edu">
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Admin Password</label>
+          <input type="password" id="password" name="password" required autocomplete="new-password" minlength="6" placeholder="Strong password">
+          <small class="text-muted">Minimum 6 characters</small>
+        </div>
+        
+        <p id="form-error" class="form-error hidden"></p>
+        <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 12px;">
+          🔐 Create Admin Account
+        </button>
+      </form>
+      
+      <div style="text-align: center; margin-top: 2rem;">
+        <a href="/signup" style="color: #0066b3;">← Register as Regular User</a><br>
+        <a href="/login" style="color: #6c757d;">← Back to Login</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    const form = document.getElementById('admin-signup-form');
+    const errEl = document.getElementById('form-error');
+    
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errEl.classList.add('hidden');
+      
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      
+      if (!name || !email || !password) {
+        errEl.textContent = 'All fields are required for admin registration.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      
+      if (password.length < 6) {
+        errEl.textContent = 'Password must be at least 6 characters.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating Admin Account...';
+      
+      try {
+        const response = await fetch('/api/admin-signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            name, 
+            email, 
+            password
+          }),
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+          alert('✅ Admin account created successfully! You can now log in.');
+          window.location.href = '/login';
+        } else {
+          errEl.textContent = data.error || 'Admin registration failed.';
+          errEl.classList.remove('hidden');
+        }
+      } catch (error) {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '🔐 Create Admin Account';
+      }
+    });
+  </script>
+</body>
+</html>
